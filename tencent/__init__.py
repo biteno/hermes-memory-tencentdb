@@ -33,21 +33,11 @@ except ImportError:
 
 logger = logging.getLogger("hermes.plugins.memory.tencent")
 
-DEFAULT_CORE_URL = "http://docker13.dev.biteno.com:8420"
-DEFAULT_IMPORT_URL = "http://docker13.dev.biteno.com:8125"
-DEFAULT_KNOWLEDGE_URL = "http://docker13.dev.biteno.com:8424"
-DEFAULT_USER_KEY = "sk-mem-8lWOYsEbWAR62Pm1RLaLT9FlpFF2zgBm"
-DEFAULT_TEAM_ID = "team-thpa5ncu0p"
-
-AGENT_MAP = {
-    "leon": "agt-th8bvq00pv",
-    "leon-bode": "agt-th8bvq00pv",
-    "axel-probst": "agt-tichvub7et",
-    "axel": "agt-tichvub7et",
-    "franz-testmann": "agt-tymmbcye2r",
-    "franz": "agt-tymmbcye2r",
-    "default": "agt-th5mj7e7ns",
-}
+DEFAULT_CORE_URL = "http://localhost:8420"
+DEFAULT_IMPORT_URL = "http://localhost:8125"
+DEFAULT_KNOWLEDGE_URL = "http://localhost:8424"
+DEFAULT_USER_KEY = ""
+DEFAULT_TEAM_ID = "default"
 
 
 def _http_post(url: str, headers: dict, payload: dict, timeout: float = 3.0) -> tuple[int, Any]:
@@ -79,7 +69,7 @@ class TencentMemoryProvider(MemoryProvider):
         self._knowledge_url = DEFAULT_KNOWLEDGE_URL
         self._user_key = DEFAULT_USER_KEY
         self._team_id = DEFAULT_TEAM_ID
-        self._agent_id = "agt-th8bvq00pv"
+        self._agent_id = "default-agent"
         self._session_id = ""
         self._worker: Optional[ThreadPoolExecutor] = None
         self._worker_lock = threading.Lock()
@@ -90,7 +80,9 @@ class TencentMemoryProvider(MemoryProvider):
         return "tencent"
 
     def is_available(self) -> bool:
-        return bool(self._user_key and self._core_url)
+        cfg_key = self._user_key or os.environ.get("TDAI_USER_KEY", "")
+        cfg_core = self._core_url or os.environ.get("TDAI_CORE_URL", "")
+        return bool(cfg_key and cfg_core)
 
     def get_config_schema(self) -> List[Dict[str, Any]]:
         return [
@@ -99,7 +91,7 @@ class TencentMemoryProvider(MemoryProvider):
             {"key": "knowledge_url", "description": "TencentDB Knowledge/Wiki URL (:8424)", "default": DEFAULT_KNOWLEDGE_URL},
             {"key": "user_key", "description": "TencentDB User API Key (sk-mem-...)", "secret": True},
             {"key": "team_id", "description": "TencentDB Team / Namespace ID", "default": DEFAULT_TEAM_ID},
-            {"key": "agent_id", "description": "TencentDB Agent ID (e.g. agt-th8bvq00pv)"},
+            {"key": "agent_id", "description": "TencentDB Agent ID (e.g. agt-xxx)"},
         ]
 
     def initialize(self, session_id: str, **kwargs: Any) -> None:
@@ -109,9 +101,7 @@ class TencentMemoryProvider(MemoryProvider):
         hermes_home = kwargs.get("hermes_home") or ""
         profile_name = os.path.basename(str(hermes_home)) if "profiles" in str(hermes_home) else ""
 
-        resolved_agent = ""
-        if profile_name in AGENT_MAP:
-            resolved_agent = AGENT_MAP[profile_name]
+        resolved_agent = profile_name or "default-agent"
 
         try:
             from hermes_cli.config import load_config
@@ -149,14 +139,13 @@ class TencentMemoryProvider(MemoryProvider):
                 or DEFAULT_TEAM_ID
             )
             resolved_agent = (
-                resolved_agent
-                or mem_cfg.get("agent_id")
+                mem_cfg.get("agent_id")
                 or mcp_env.get("TDAI_AGENT_ID")
                 or os.environ.get("TDAI_AGENT_ID")
-                or "agt-th8bvq00pv"
+                or resolved_agent
             )
         except Exception:
-            resolved_agent = resolved_agent or "agt-th8bvq00pv"
+            pass
 
         self._agent_id = resolved_agent
 
@@ -176,7 +165,7 @@ class TencentMemoryProvider(MemoryProvider):
         )
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
-        if is_trivial_prompt(query):
+        if is_trivial_prompt(query) or not self.is_available():
             return ""
 
         headers = {
@@ -245,7 +234,7 @@ class TencentMemoryProvider(MemoryProvider):
         session_id: str = "",
         messages: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
-        if not user_content.strip() or not assistant_content.strip():
+        if not user_content.strip() or not assistant_content.strip() or not self.is_available():
             return
 
         target_session = session_id or self._session_id
@@ -379,7 +368,7 @@ class TencentMemoryProvider(MemoryProvider):
                 {"query": query, "limit": limit},
             )
             if status == 200 and isinstance(res, dict):
-                items = res.get("data", {}).get("items", [])
+                items = res.get("data", {}).get("items", []) if isinstance(res, dict) else []
                 if not items:
                     return f"Keine Skills zu '{query}' gefunden."
                 return json.dumps(items, ensure_ascii=False, indent=2)
