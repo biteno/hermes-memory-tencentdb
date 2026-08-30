@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hermes-memory-tencentdb"
+version = "1.0.0"
+description = "TencentDB Agent Memory Provider Plugin for Hermes Agent"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Biteno GmbH", email = "support@biteno.com" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.entry-points."hermes.memory_providers"]
+tencent = "tencent:TencentMemoryProvider"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tencent"]

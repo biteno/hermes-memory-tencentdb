@@ -1,0 +1,8 @@
+name: tencent
+version: "1.0.0"
+description: "TencentDB Agent Memory provider for Hermes Agent — bidirectional prefetch recall and asynchronous turn sync on TencentDB (docker13 / Core & Panel)."
+author: "Biteno GmbH"
+category: memory
+homepage: "https://github.com/biteno-gmbh/hermes-memory-tencentdb"
+repository: "https://github.com/biteno-gmbh/hermes-memory-tencentdb"
+license: "MIT"
