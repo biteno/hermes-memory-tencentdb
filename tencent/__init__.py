@@ -368,7 +368,7 @@ class TencentMemoryProvider(MemoryProvider):
                 {"query": query, "limit": limit},
             )
             if status == 200 and isinstance(res, dict):
-                items = res.get("data", {}).get("items", []) if isinstance(res, dict) else []
+                items = res.get("data", {}).get("items", [])
                 if not items:
                     return f"Keine Skills zu '{query}' gefunden."
                 return json.dumps(items, ensure_ascii=False, indent=2)
