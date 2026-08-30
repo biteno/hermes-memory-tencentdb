@@ -20,7 +20,7 @@ A high-performance, bidirectional memory provider for [Hermes Agent](https://git
 
 ### Method 1: Git Plugin (Hermes CLI)
 ```bash
-hermes plugins install https://github.com/biteno-gmbh/hermes-memory-tencentdb
+hermes plugins install https://github.com/biteno/hermes-memory-tencentdb
 hermes config set memory.provider tencent
 ```
 
